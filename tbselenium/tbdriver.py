@@ -8,6 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.firefox.webdriver import WebDriver as FirefoxDriver
+from selenium.webdriver.firefox.options import Options
 import tbselenium.common as cm
 from tbselenium.utils import prepend_to_env_var, is_busy
 from tbselenium.tbbinary import TBBinary
@@ -37,7 +38,8 @@ class TorBrowserDriver(FirefoxDriver):
                  control_port=None,
                  extensions=[],
                  default_bridge_type="",
-                 capabilities=None):
+                 capabilities=None,
+                 headless=True):
 
         self.tor_cfg = tor_cfg
         self.setup_tbb_paths(tbb_path, tbb_fx_binary_path,
@@ -50,11 +52,15 @@ class TorBrowserDriver(FirefoxDriver):
         self.export_env_vars()
         self.binary = self.get_tb_binary(logfile=tbb_logfile_path)
         self.binary.add_command_line_options('--class', '"Tor Browser"')
+        options = Options()
+        if headless:
+            options.headless = True
         super(TorBrowserDriver, self).__init__(firefox_profile=self.profile,
                                                firefox_binary=self.binary,
                                                capabilities=self.capabilities,
                                                timeout=cm.TB_INIT_TIMEOUT,
-                                               service_log_path=tbb_logfile_path)
+                                               service_log_path=tbb_logfile_path,
+                                               options=options)
         self.is_running = True
         sleep(1)
 
