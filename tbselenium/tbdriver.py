@@ -1,6 +1,6 @@
 import shutil
 from os import environ, chdir
-from os.path import isdir, isfile, join, abspath
+from os.path import isdir, isfile, join, abspath, dirname
 from time import sleep
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -46,7 +46,8 @@ class TorBrowserDriver(FirefoxDriver):
                              tbb_profile_path, tor_data_dir)
         self.profile = webdriver.FirefoxProfile(self.tbb_profile_path)
         self.install_extensions(extensions)
-        self.init_ports(tor_cfg, socks_port, control_port)
+        socks_host = pref_dict.get('network.proxy.socks') or pref_dict.get('extensions.torbutton.custom.socks_host') or 'localhost'
+        self.init_ports(tor_cfg, socks_port, control_port, socks_host)
         self.init_prefs(pref_dict, default_bridge_type)
         self.setup_capabilities(capabilities)
         self.export_env_vars()
@@ -68,7 +69,7 @@ class TorBrowserDriver(FirefoxDriver):
         for extension in extensions:
             self.profile.add_extension(extension)
 
-    def init_ports(self, tor_cfg, socks_port, control_port):
+    def init_ports(self, tor_cfg, socks_port, control_port, socks_host):
         """Check SOCKS port and Tor config inputs."""
         if tor_cfg == cm.LAUNCH_NEW_TBB_TOR:
             raise TBDriverConfigError(
@@ -89,9 +90,9 @@ class TorBrowserDriver(FirefoxDriver):
             else:
                 control_port = cm.STEM_CONTROL_PORT
 
-        if not is_busy(socks_port):
-            raise TBDriverPortError("SOCKS port %s is not listening"
-                                    % socks_port)
+        if not is_busy(socks_port, socks_host):
+            raise TBDriverPortError("SOCKS port %s is not listening at %s"
+                                    % (socks_port, socks_host))
 
         self.socks_port = socks_port
         self.control_port = control_port
@@ -121,15 +122,19 @@ class TorBrowserDriver(FirefoxDriver):
         if not isdir(tbb_profile_path):
             raise TBDriverPathError("Invalid Firefox profile dir %s"
                                     % tbb_profile_path)
-        self.tbb_path = abspath(tbb_path)
+        if tbb_path:
+          self.tbb_path = abspath(tbb_path)
+        else:
+          self.tbb_path = abspath(dirname(dirname(tbb_fx_binary_path)))
+
         self.tbb_profile_path = abspath(tbb_profile_path)
         self.tbb_fx_binary_path = abspath(tbb_fx_binary_path)
-        self.tbb_browser_dir = abspath(join(tbb_path,
+        self.tbb_browser_dir = abspath(join(self.tbb_path,
                                             cm.DEFAULT_TBB_BROWSER_DIR))
         if tor_data_dir:
             self.tor_data_dir = tor_data_dir  # only relevant if we launch tor
         else:
-            self.tor_data_dir = join(tbb_path, cm.DEFAULT_TOR_DATA_PATH)
+            self.tor_data_dir = join(self.tbb_path, cm.DEFAULT_TOR_DATA_PATH)
         # TB can't find bundled "fonts" if we don't switch to tbb_browser_dir
         chdir(self.tbb_browser_dir)
 

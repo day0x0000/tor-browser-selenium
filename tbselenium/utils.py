@@ -37,9 +37,9 @@ def stop_xvfb(xvfb_display):
         xvfb_display.stop()
 
 
-def is_busy(port_no):
+def is_busy(port_no, host='localhost'):
     """Return True if port is already in use."""
-    return is_connectable(port_no)
+    return is_connectable(port_no, host)
 
 
 def prepend_to_env_var(env_var, new_value):
